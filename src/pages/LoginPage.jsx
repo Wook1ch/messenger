@@ -6,16 +6,18 @@ export default function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setMessage(error.message);
-    else onLogin(data.user);
-  };
-
+  // Функция регистрации
   const handleSignup = async () => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) setMessage(error.message);
     else setMessage("Регистрация успешна! Проверь почту");
+  };
+
+  // Функция входа
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setMessage(error.message);
+    else onLogin(data.user);
   };
 
   return (
@@ -39,7 +41,7 @@ export default function LoginPage({ onLogin }) {
       <button onClick={handleLogin}>Войти</button>
       <button onClick={handleSignup}>Регистрация</button>
 
-      <p style={{ marginTop: 10, color: "#ff8080" }}>{message}</p>
+      <p style={{ color: "#ff8080", marginTop: 10 }}>{message}</p>
     </div>
   );
 }
