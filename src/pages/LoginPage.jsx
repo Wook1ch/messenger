@@ -1,11 +1,13 @@
 // src/pages/LoginPage.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // для перенаправления
 import { supabase } from "../api/supabase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const navigate = useNavigate(); // хук для перехода на другую страницу
 
   // Регистрация
   const handleSignup = async () => {
@@ -18,6 +20,8 @@ export default function LoginPage() {
       setMessage(error.message);
     } else {
       setMessage("Регистрация успешна! Проверь почту.");
+      // Автоматический переход на чат через 1.5 сек
+      setTimeout(() => navigate("/chat"), 1500);
     }
   };
 
@@ -32,6 +36,8 @@ export default function LoginPage() {
       setMessage(error.message);
     } else {
       setMessage("Вы вошли в систему!");
+      // Переход на чат
+      setTimeout(() => navigate("/chat"), 500);
     }
   };
 
@@ -43,13 +49,13 @@ export default function LoginPage() {
         alignItems: "center",
         justifyContent: "center",
         height: "100vh",
-        backgroundColor: "#1a1f2c",
-        color: "#fff",
+        backgroundColor: "#0f1011",
+        color: "#313131",
         padding: 20,
         borderRadius: 10,
       }}
     >
-      <h1>Вход / Регистрация</h1>
+      <h1>Тяни за писюн кронк</h1>
 
       <input
         type="email"
@@ -60,7 +66,7 @@ export default function LoginPage() {
           margin: 5,
           padding: 10,
           borderRadius: 8,
-          border: "1px solid #3a3f5c",
+          border: "1px solid #502974",
           width: 250,
         }}
       />

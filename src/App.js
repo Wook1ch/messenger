@@ -1,19 +1,16 @@
-import { useState } from "react";
+// src/App.js
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import ChatPage from "./pages/ChatPage";
-import './styles/theme.css';
 
 function App() {
-  const [user, setUser] = useState(null);
-
   return (
-    <div className="app-wrapper">
-      {!user ? (
-        <LoginPage onLogin={u => setUser(u)} />
-      ) : (
-        <ChatPage username={user.email} />
-      )}
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+      </Routes>
+    </Router>
   );
 }
 
