@@ -9,6 +9,10 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const navigate = useNavigate(); // хук для перехода на другую страницу
 
+  // hover состояния для анимации
+  const [hoverSignup, setHoverSignup] = useState(false);
+  const [hoverLogin, setHoverLogin] = useState(false);
+
   // Регистрация
   const handleSignup = async () => {
     const { error } = await supabase.auth.signUp({
@@ -20,7 +24,6 @@ export default function LoginPage() {
       setMessage(error.message);
     } else {
       setMessage("Регистрация успешна! Проверь почту.");
-      // Автоматический переход на чат через 1.5 сек
       setTimeout(() => navigate("/chat"), 1500);
     }
   };
@@ -36,23 +39,34 @@ export default function LoginPage() {
       setMessage(error.message);
     } else {
       setMessage("Вы вошли в систему!");
-      // Переход на чат
       setTimeout(() => navigate("/chat"), 500);
     }
   };
+
+  // функция для стилей кнопок с hover
+  const buttonStyle = (hover) => ({
+    marginRight: 10,
+    padding: "8px 16px",
+    borderRadius: 8,
+    border: "none",
+    backgroundColor: hover ? "#5a5fe0" : "#3a3f5c", // меняем цвет при hover
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: "bold",
+    transition: "all 0.3s ease", // плавная анимация
+    transform: hover ? "scale(1.05)" : "scale(1)", // слегка увеличиваем
+  });
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
         justifyContent: "center",
+        alignItems: "center",
         height: "100vh",
-        backgroundColor: "#0f1011",
-        color: "#313131",
-        padding: 20,
-        borderRadius: 10,
+        width: "100vw",
+        background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)", // градиентный фон
       }}
     >
       <h1>Тяни за писюн кронк</h1>
@@ -88,29 +102,18 @@ export default function LoginPage() {
       <div style={{ marginTop: 10 }}>
         <button
           onClick={handleSignup}
-          style={{
-            marginRight: 10,
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            backgroundColor: "#3a3f5c",
-            color: "#fff",
-            cursor: "pointer",
-          }}
+          style={buttonStyle(hoverSignup)}
+          onMouseEnter={() => setHoverSignup(true)}
+          onMouseLeave={() => setHoverSignup(false)}
         >
           Зарегистрироваться
         </button>
 
         <button
           onClick={handleLogin}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            backgroundColor: "#3a3f5c",
-            color: "#fff",
-            cursor: "pointer",
-          }}
+          style={buttonStyle(hoverLogin)}
+          onMouseEnter={() => setHoverLogin(true)}
+          onMouseLeave={() => setHoverLogin(false)}
         >
           Войти
         </button>
