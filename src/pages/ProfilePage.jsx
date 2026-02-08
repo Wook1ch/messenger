@@ -1,4 +1,3 @@
-// src/pages/ProfilePage.jsx
 import { useEffect, useState } from "react";
 import { supabase } from "../api/supabase";
 import { useNavigate } from "react-router-dom";
@@ -10,35 +9,32 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
-  // Загрузка данных пользователя
   useEffect(() => {
     const loadProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) return console.error(error.message);
       if (user) {
         setEmail(user.email);
-
-        const { data, error } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("username, avatar")
           .eq("id", user.id)
           .single();
-
-        if (error) console.error(error.message);
-        else if (data) {
-          setUsername(data.username);
-          setAvatarUrl(data.avatar || "");
+        if (profileError) console.error(profileError.message);
+        else if (profileData) {
+          setUsername(profileData.username);
+          setAvatarUrl(profileData.avatar || "");
         }
       }
     };
     loadProfile();
   }, []);
 
-  // Сохранение изменений
   const handleSave = async () => {
-    const { data, error } = await supabase
+    const { data,error } = await supabase
       .from("profiles")
       .update({ username, avatar: avatarUrl })
-      .eq("id", supabase.auth.getUser().then(u => u.data.user.id));
+      .eq("id", (await supabase.auth.getUser()).data.user.id);
 
     if (error) setMessage(error.message);
     else setMessage("Профиль обновлен!");

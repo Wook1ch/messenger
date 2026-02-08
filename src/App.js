@@ -13,7 +13,7 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/all-chats" element={<AllChatsPage />} />
         {/* Позже можно добавить динамические маршруты для конкретного чата */}
-        <Route path="/chat/:id" element={<ChatPage />} />
+        <Route path="/chat/:friendId" element={<ChatPage />} />
       </Routes>
     </Router>
   );

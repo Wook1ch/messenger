@@ -1,152 +1,143 @@
-// src/pages/ChatPage.jsx
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "../api/supabase";
+import { useNavigate } from "react-router-dom";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [username, setUsername] = useState("");
-  const [userId, setUserId] = useState("");
-  const messagesEndRef = useRef(null);
+  const [userId, setUserId] = useState(null);
 
-  // 1. Получаем текущего пользователя
+  const messagesEndRef = useRef(null);
+  const navigate = useNavigate();
+
+  // Фиктивный получатель для теста (UUID второго пользователя)
+  const receiverId = "ebd2d5b6-85e6-4de8-a3b4-05d904191688";
+
+  // ---------- Получаем текущего пользователя ----------
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
-      if (error) return console.error("Ошибка получения пользователя:", error.message);
+      if (error) return console.error(error.message);
+
       if (data?.user) {
-        setUsername(data.user.email || "Anon");
         setUserId(data.user.id);
       }
     };
     getUser();
   }, []);
 
-  // 2. Загружаем все сообщения
-  const loadMessages = async () => {
-    try {
-      // Подключаем связь с профилями (avatars, username)
-      const { data, error } = await supabase
-        .from("messages")
-        .select(`
-          id,
-          user_id,
-          content,
-          created_at,
-          profiles (
-            username,
-            avatar
-          )
-        `)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-
-      setMessages(data);
-      scrollToBottom();
-    } catch (err) {
-      console.error("Ошибка загрузки сообщений:", err.message);
-    }
-  };
-
-  // 3. Автообновление каждые 2 сек
-  useEffect(() => {
-    loadMessages();
-    const interval = setInterval(loadMessages, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // 4. Прокрутка вниз
+  // ---------- Автопрокрутка ----------
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // 5. Отправка нового сообщения
-  const handleSend = async () => {
-    if (!newMessage.trim() || !userId) return;
+  // ---------- Загрузка сообщений ----------
+  const loadMessages = useCallback(async () => {
+    if (!userId) return;
 
-    try {
-      const { error } = await supabase.from("messages").insert([
-        {
-          user_id: userId,
-          content: newMessage,
-        },
-      ]);
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .order("created_at", { ascending: true });
 
-      if (error) throw error;
-
-      setNewMessage("");
-      loadMessages(); // обновляем чат
-    } catch (err) {
-      console.error("Ошибка отправки сообщения:", err.message);
+    if (error) {
+      console.error("Ошибка загрузки сообщений:", error.message);
+      return;
     }
+
+    setMessages(data);
+    setTimeout(scrollToBottom, 50);
+  }, [userId]);
+
+  useEffect(() => {
+    loadMessages();
+    const interval = setInterval(loadMessages, 2000);
+    return () => clearInterval(interval);
+  }, [loadMessages]);
+
+  // ---------- Отправка сообщения ----------
+  const handleSend = async () => {
+    if (!newMessage.trim() || !userId) {
+      console.warn("Сообщение не отправлено: нет данных");
+      return;
+    }
+
+    const { error } = await supabase.from("chat_messages").insert({
+      sender_id: userId,
+      receiver_id: receiverId,
+      content: newMessage,
+    });
+
+    if (error) {
+      console.error("Ошибка отправки:", error.message);
+      return;
+    }
+
+    setNewMessage("");
+    loadMessages();
   };
 
-  // 6. Форматирование времени
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return `${date.getHours().toString().padStart(2,"0")}:${date.getMinutes().toString().padStart(2,"0")}`;
+  const formatTime = (ts) => {
+    const d = new Date(ts);
+    return `${d.getHours().toString().padStart(2, "0")}:${d
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
   };
 
+  // ---------- UI ----------
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
         height: "100vh",
-        padding: 20,
         background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)",
+        padding: 10,
+        boxSizing: "border-box",
       }}
     >
-      {/* Контейнер сообщений */}
-      <div
-        style={{
-          flexGrow: 1,
-          overflowY: "auto",
-          padding: 10,
-          borderRadius: 8,
-          background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)",
-        }}
-      >
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            style={{
-              position: "relative",
-              marginBottom: 6,
-              padding: "5px 8px",
-              borderRadius: 12,
-              backgroundColor: "#555555",
-              color: "#fff",
-              maxWidth: "40%",
-              wordBreak: "break-word",
-            }}
-          >
-            <div style={{ fontSize: "0.8rem" }}>{msg.content}</div>
-            <span
+      {/* Сообщения */}
+      <div style={{ flexGrow: 1, overflowY: "auto", marginBottom: 10 }}>
+        {messages.map((msg) => {
+          const isMine = msg.sender_id === userId;
+          return (
+            <div
+              key={msg.id}
               style={{
-                position: "absolute",
-                bottom: 2,
-                right: 4,
-                fontSize: "0.6rem",
-                color: "#ddd",
+                alignSelf: isMine ? "flex-end" : "flex-start",
+                backgroundColor: isMine ? "#4b7bec" : "#555",
+                color: "#fff",
+                padding: "6px 10px",
+                borderRadius: 10,
+                marginBottom: 6,
+                maxWidth: "35%",
+                wordBreak: "break-word",
               }}
             >
-              {formatTime(msg.created_at)}
-            </span>
-          </div>
-        ))}
+              <div>{msg.content}</div>
+              <div
+                style={{
+                  fontSize: "0.65rem",
+                  textAlign: "right",
+                  opacity: 0.7,
+                }}
+              >
+                {formatTime(msg.created_at)}
+              </div>
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Отправка сообщения */}
-      <div style={{ display: "flex", gap: 10 }}>
+      {/* Ввод */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 60 }}>
         <input
-          type="text"
           value={newMessage}
           placeholder="Введите сообщение..."
           onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
           style={{
             flexGrow: 1,
             padding: 10,
@@ -155,22 +146,46 @@ export default function ChatPage() {
             backgroundColor: "#1a1f2c",
             color: "#fff",
           }}
-          onKeyPress={(e) => e.key === "Enter" && handleSend()}
         />
         <button
           onClick={handleSend}
           style={{
             padding: "10px 20px",
             borderRadius: 8,
-            border: "none",
             backgroundColor: "#3a3f5c",
             color: "#fff",
+            border: "none",
             cursor: "pointer",
           }}
         >
           Отправить
         </button>
       </div>
+
+      {/* Нижняя панель */}
+      <div style={bottomBar}>
+        <div onClick={() => navigate("/profile")} style={buttonStyle}>⚙️</div>
+        <div style={buttonStyle}>📞</div>
+        <div style={buttonStyle}>👤</div>
+        <div onClick={() => navigate("/all-chats")} style={buttonStyle}>💬</div>
+      </div>
     </div>
   );
 }
+
+const bottomBar = {
+  position: "fixed",
+  bottom: 0,
+  left: 0,
+  width: "100%",
+  height: 60,
+  backgroundColor: "#4b2e7f",
+  display: "flex",
+  justifyContent: "space-around",
+  alignItems: "center",
+};
+
+const buttonStyle = {
+  cursor: "pointer",
+  padding: 10,
+};

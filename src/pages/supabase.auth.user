@@ -1,0 +1,124 @@
+// src/pages/ChatPage.jsx
+import { useEffect, useState } from "react";
+import { supabase } from "../api/supabase";
+
+export default function ChatPage() {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [username, setUsername] = useState("");
+
+  // Загрузка текущего пользователя
+  useEffect(() => {
+    const user = supabase.auth.user();
+    if (user) setUsername(user.email); // используем email как имя
+  }, []);
+
+  // Функция загрузки сообщений
+  const loadMessages = async () => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (!error) setMessages(data);
+  };
+
+  // Подгружаем сообщения каждые 2 секунды
+ useEffect(() => {
+  const getUser = async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) console.error("Ошибка получения пользователя:", error.message);
+    if (data?.user) setUsername(data.user.email);
+  };
+  getUser();
+}, []);
+
+
+
+  // Отправка нового сообщения
+  const handleSend = async () => {
+    if (newMessage.trim() === "") return;
+
+    const { error } = await supabase.from("messages").insert([
+      {
+        username,
+        content: newMessage,
+      },
+    ]);
+
+    if (!error) setNewMessage(""); // очищаем поле
+    loadMessages(); // обновляем список
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        height: "100vh",
+        backgroundColor: "#1a1f2c",
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          flexGrow: 1,
+          overflowY: "auto",
+          padding: 10,
+          borderRadius: 8,
+          border: "1px solid #3a3f5c",
+          marginBottom: 10,
+          backgroundColor: "#272d44",
+        }}
+      >
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            style={{
+              marginBottom: 8,
+              padding: 10,
+              borderRadius: 12,
+              backgroundColor: "#3a3f5c",
+              wordBreak: "break-word",
+            }}
+          >
+            <strong>{msg.username}: </strong>
+            {msg.content}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <input
+          type="text"
+          value={newMessage}
+          placeholder="Введите сообщение..."
+          onChange={(e) => setNewMessage(e.target.value)}
+          style={{
+            flexGrow: 1,
+            padding: 10,
+            borderRadius: 8,
+            border: "1px solid #3a3f5c",
+            backgroundColor: "#1a1f2c",
+            color: "#fff",
+          }}
+          onKeyPress={(e) => e.key === "Enter" && handleSend()}
+        />
+        <button
+          onClick={handleSend}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            backgroundColor: "#3a3f5c",
+            color: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          Отправить
+        </button>
+      </div>
+    </div>
+  );
+}
