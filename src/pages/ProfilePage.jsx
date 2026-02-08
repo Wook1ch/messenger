@@ -31,11 +31,7 @@ export default function ProfilePage() {
   }, []);
 
   const handleSave = async () => {
-    const { data,error } = await supabase
-      .from("profiles")
-      .update({ username, avatar: avatarUrl })
-      .eq("id", (await supabase.auth.getUser()).data.user.id);
-
+    const { data, error } = await supabase.from("profiles").select("*");
     if (error) setMessage(error.message);
     else setMessage("Профиль обновлен!");
   };
