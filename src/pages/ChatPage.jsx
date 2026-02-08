@@ -1,6 +1,6 @@
+// src/pages/ChatPage.jsx
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../api/supabase";
-import { useNavigate } from "react-router-dom";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
@@ -8,13 +8,12 @@ export default function ChatPage() {
   const [username, setUsername] = useState("");
   const [userId, setUserId] = useState("");
   const messagesEndRef = useRef(null);
-  const navigate = useNavigate();
 
-  // Загрузка текущего пользователя
+  // 1. Получаем текущего пользователя
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
-      if (error) return console.error(error.message);
+      if (error) return console.error("Ошибка получения пользователя:", error.message);
       if (data?.user) {
         setUsername(data.user.email || "Anon");
         setUserId(data.user.id);
@@ -23,39 +22,67 @@ export default function ChatPage() {
     getUser();
   }, []);
 
-  // Загрузка сообщений
+  // 2. Загружаем все сообщения
   const loadMessages = async () => {
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .order("created_at", { ascending: true });
-    if (!error) {
+    try {
+      // Подключаем связь с профилями (avatars, username)
+      const { data, error } = await supabase
+        .from("messages")
+        .select(`
+          id,
+          user_id,
+          content,
+          created_at,
+          profiles (
+            username,
+            avatar
+          )
+        `)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
       setMessages(data);
       scrollToBottom();
+    } catch (err) {
+      console.error("Ошибка загрузки сообщений:", err.message);
     }
   };
 
+  // 3. Автообновление каждые 2 сек
   useEffect(() => {
     loadMessages();
     const interval = setInterval(loadMessages, 2000);
     return () => clearInterval(interval);
   }, []);
 
+  // 4. Прокрутка вниз
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // 5. Отправка нового сообщения
   const handleSend = async () => {
     if (!newMessage.trim() || !userId) return;
-    const { error } = await supabase.from("messages").insert([
-      { user_id: userId, username: username || "Anon", content: newMessage },
-    ]);
-    if (!error) {
+
+    try {
+      const { error } = await supabase.from("messages").insert([
+        {
+          user_id: userId,
+          content: newMessage,
+        },
+      ]);
+
+      if (error) throw error;
+
       setNewMessage("");
-      loadMessages();
+      loadMessages(); // обновляем чат
+    } catch (err) {
+      console.error("Ошибка отправки сообщения:", err.message);
     }
   };
 
+  // 6. Форматирование времени
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return `${date.getHours().toString().padStart(2,"0")}:${date.getMinutes().toString().padStart(2,"0")}`;
@@ -66,20 +93,20 @@ export default function ChatPage() {
       style={{
         display: "flex",
         flexDirection: "column",
+        justifyContent: "space-between",
         height: "100vh",
+        padding: 20,
         background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)",
-        padding: 10,
-        boxSizing: "border-box",
       }}
     >
-      {/* Сообщения */}
+      {/* Контейнер сообщений */}
       <div
         style={{
           flexGrow: 1,
           overflowY: "auto",
-          padding: 5,
+          padding: 10,
           borderRadius: 8,
-          marginBottom: 10,
+          background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)",
         }}
       >
         {messages.map((msg) => (
@@ -88,15 +115,15 @@ export default function ChatPage() {
             style={{
               position: "relative",
               marginBottom: 6,
-              padding: "5px 7px",
-              borderRadius: 10,
+              padding: "5px 8px",
+              borderRadius: 12,
               backgroundColor: "#555555",
               color: "#fff",
-              maxWidth: "35%",
+              maxWidth: "40%",
               wordBreak: "break-word",
             }}
           >
-            <div style={{ fontSize: "0.9rem" }}>{msg.content}</div>
+            <div style={{ fontSize: "0.8rem" }}>{msg.content}</div>
             <span
               style={{
                 position: "absolute",
@@ -113,8 +140,8 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Ввод сообщения */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 60 }}>
+      {/* Отправка сообщения */}
+      <div style={{ display: "flex", gap: 10 }}>
         <input
           type="text"
           value={newMessage}
@@ -143,85 +170,6 @@ export default function ChatPage() {
         >
           Отправить
         </button>
-      </div>
-
-      {/* Нижняя панель */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          width: "100%",
-          height: 60,
-          backgroundColor: "#4b2e7f",
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          borderTopLeftRadius: 12,
-          borderTopRightRadius: 12,
-          boxShadow: "0 -2px 6px rgba(0,0,0,0.3)",
-        }}
-      >
-        {/* Кнопка Профиль */}
-        <div
-          onClick={() => navigate("/profile")}
-          style={{
-            cursor: "pointer",
-            padding: 10,
-            borderRadius: 8,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          ⚙️
-        </div>
-
-        {/* Кнопка Звонки */}
-        <div
-          onClick={() => alert("Звонки пока не реализованы")}
-          style={{
-            cursor: "pointer",
-            padding: 10,
-            borderRadius: 8,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          📞
-        </div>
-
-        {/* Кнопка Контакты */}
-        <div
-          onClick={() => alert("Контакты пока не реализованы")}
-          style={{
-            cursor: "pointer",
-            padding: 10,
-            borderRadius: 8,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          👤
-        </div>
-
-        {/* Кнопка Все чаты */}
-        <div
-  onClick={() => navigate("/all-chats")}
-  style={{
-    cursor: "pointer",
-    padding: 10,
-    borderRadius: 8,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  }}
->
-  💬
-</div>
-
       </div>
     </div>
   );
