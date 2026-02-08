@@ -13,40 +13,47 @@ export default function ProfilePage() {
     const loadProfile = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error) return console.error(error.message);
-      if (user) {
-        setEmail(user.email);
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("username, avatar")
-          .eq("id", user.id)
-          .single();
-        if (profileError) console.error(profileError.message);
-        else if (profileData) {
-          setUsername(profileData.username);
-          setAvatarUrl(profileData.avatar || "");
-        }
+      if (!user) return;
+
+      setEmail(user.email);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("username, avatar")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) console.error(profileError.message);
+      else if (profileData) {
+        setUsername(profileData.username);
+        setAvatarUrl(profileData.avatar || "");
       }
     };
     loadProfile();
   }, []);
 
   const handleSave = async () => {
-    const { data, error } = await supabase.from("profiles").select("*");
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: (await supabase.auth.getUser()).data.user.id, username, avatar: avatarUrl });
+
     if (error) setMessage(error.message);
     else setMessage("Профиль обновлен!");
   };
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      height: "100vh",
-      background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)",
-      color: "#fff",
-      padding: 20
-    }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        background: "linear-gradient(to bottom, #0d1b4c, #2e0f5a)",
+        color: "#fff",
+        padding: 20,
+      }}
+    >
       <h2>Профиль</h2>
       <p>Email: {email}</p>
 
@@ -74,7 +81,7 @@ export default function ProfilePage() {
           borderRadius: 8,
           border: "none",
           backgroundColor: "#3a3f5c",
-          cursor: "pointer"
+          cursor: "pointer",
         }}
       >
         Сохранить
@@ -90,7 +97,7 @@ export default function ProfilePage() {
           borderRadius: 6,
           border: "none",
           backgroundColor: "#555",
-          cursor: "pointer"
+          cursor: "pointer",
         }}
       >
         Вернуться в чат
